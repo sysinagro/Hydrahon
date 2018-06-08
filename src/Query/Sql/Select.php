@@ -436,7 +436,7 @@ class Select extends SelectBase implements FetchableInterface
     public function get()
     {
          // run the callbacks to retirve the results
-        $results = $this->executeResultFetcher();
+        $results = $this->executeResultFetcher()->fetch_all();
 
         // we always exprect an array here!
         if (!is_array($results) || empty($results))
