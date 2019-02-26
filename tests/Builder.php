@@ -106,6 +106,8 @@ class Builder_Test extends \PHPUnit_Framework_TestCase
 		{
 			$this->assertInstanceOf('ClanCats\\Hydrahon\\Query\\Sql\\Select', $query);
 			$this->assertInstanceOf('ClanCats\\Hydrahon\\Query\\Sql\\FetchableInterface', $query);
+
+			return new MySQLi_Result_Mock();
 		});
 
 		$hydrahon->table('test')->select()->get();
@@ -116,6 +118,8 @@ class Builder_Test extends \PHPUnit_Framework_TestCase
 			$this->assertNotInstanceOf('ClanCats\\Hydrahon\\Query\\Sql\\Select', $query);
 			$this->assertInstanceOf('ClanCats\\Hydrahon\\Query\\Sql\\Exists', $query);
 			$this->assertInstanceOf('ClanCats\\Hydrahon\\Query\\Sql\\FetchableInterface', $query);
+
+			return new MySQLi_Result_Mock();
 		});
 
 		$hydrahon->table('test')->select()->exists();
@@ -126,6 +130,8 @@ class Builder_Test extends \PHPUnit_Framework_TestCase
 			$this->assertNotInstanceOf('ClanCats\\Hydrahon\\Query\\Sql\\Select', $query);
 			$this->assertNotInstanceOf('ClanCats\\Hydrahon\\Query\\Sql\\FetchableInterface', $query);
 			$this->assertInstanceOf('ClanCats\\Hydrahon\\Query\\Sql\\Insert', $query);
+
+			return new MySQLi_Result_Mock();
 		});
 
 		$hydrahon->table('test')->insert(['foo' => 'bar'])->execute();

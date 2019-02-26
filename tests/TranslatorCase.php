@@ -64,7 +64,7 @@ abstract class TranslatorCase extends \PHPUnit_Framework_TestCase
 			$that->assertEquals($expectedQueryString, $queryString);
 			$that->assertEquals($expectedQueryParameters, $queryParameters);
 
-			return $resultSet;
+			return new MySQLi_Result_Mock($resultSet);
 		});
 
 		$this->assertEquals($expectedResult, call_user_func_array($callback, array($builder)));

@@ -25,7 +25,7 @@ abstract class Query_QueryCase extends \PHPUnit_Framework_TestCase
 		$query = new $this->queryClass;
 		$query->setResultFetcher(function() use($result)
 		{
-			return $result;
+			return new MySQLi_Result_Mock($result);
 		});
 
 		return $query;
