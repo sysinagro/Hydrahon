@@ -14,6 +14,7 @@
 use ClanCats\Hydrahon\Query\Sql\Func;
 use ClanCats\Hydrahon\Query\Sql\Select;
 use ClanCats\Hydrahon\Query\Expression;
+use ClanCats\Hydrahon\Query\Sql\Keyword\JoinType;
 
 class Query_Sql_Select_Test extends Query_QueryCase
 {
@@ -128,6 +129,15 @@ class Query_Sql_Select_Test extends Query_QueryCase
 
 		// simple 
 		$this->assertAttributes($this->createQuery()->orderBy($raw), array('orders' => array(array($raw, 'asc'))));
+
+		// in array 
+		$this->assertAttributes($this->createQuery()->orderBy([$raw, $raw]), array('orders' => array(array($raw, 'asc'), array($raw, 'asc'))));
+
+		// in array order
+		$this->assertAttributes($this->createQuery()->orderBy([$raw, $raw], 'desc'), array('orders' => array(array($raw, 'desc'), array($raw, 'desc'))));
+
+		// in array mixing
+		$this->assertAttributes($this->createQuery()->orderBy([$raw, 'foo' => 'asc'], 'desc'), array('orders' => array(array($raw, 'desc'), 'foo' => 'asc')));
 	}
 
 	/**
@@ -211,13 +221,13 @@ class Query_Sql_Select_Test extends Query_QueryCase
 			$join->where('avatars.active', 1);
 		}), array(
 			'joins' => array(
-				array('left', 'avatars', array( 
+				array(new JoinType('left'), 'avatars', array( 
 					'ons' => array(
 						array('and', 'user.id', '=', 'avatars.user_id'),
 						array('or', 'user.id', '=', 'avatars.other_user_id'),
 					),
 					'wheres' => array(
-						array('where', 'avatars.active', '=', 1),
+						array(null, 'avatars.active', '=', 1),
 					),
 				)),
 			)

@@ -297,7 +297,7 @@ class Translator_Mysql_Test extends TranslatorCase
 		});
 
 		//  where null
-		$this->assertQueryTranslation('select * from `phpunit` where `user`.`updated` is NULL', array(), function($q) 
+		$this->assertQueryTranslation('select * from `phpunit` where `user`.`updated` is null', array(), function($q) 
 		{
 			return $q->table('phpunit')->select()
 				->whereNull('user.updated');
@@ -322,10 +322,11 @@ class Translator_Mysql_Test extends TranslatorCase
 		});
 
 		// invalid stuff
-		$this->assertQueryTranslation('select * from `phpunit`', array(), function($q) 
-		{
-			return $q->table('phpunit')->select()->limit('ignore');
-		});
+		try {
+			$this->createBuilder()->table('phpunit')->select()->limit('ignore');
+		} catch (\TypeError $e) {
+			$this->assertInstanceOf(\TypeError::class,$e);
+		}
 	}
 
 	/**
@@ -486,6 +487,63 @@ class Translator_Mysql_Test extends TranslatorCase
 	/**
 	 * mysql grammar tests
 	 */
+	public function testSelectUnions()
+	{
+
+		$this->assertQueryTranslation('select `id` from `tbl1` union (select `id` from `tbl2`)', [], function($q)
+		{
+			$q1 = $q->table('tbl2')->select('id');
+			return $q->table('tbl1')->select('id')->union($q1);
+		});
+
+		$this->assertQueryTranslation('select `id` from `tbl1` union all (select `id` from `tbl2`)', [], function($q)
+		{
+			$q1 = $q->table('tbl2')->select('id');
+			return $q->table('tbl1')->select('id')->unionall($q1);
+		});
+	}
+
+	/**
+	 * mysql grammar tests
+	 */
+	public function testSpecialValues()
+	{
+		$this->assertQueryTranslation('insert into `tbl` (`col1`) values (default)', [], function($q)
+		{
+			return $q->table('tbl')->insert(['col1' => $q->value('default')]);
+		});
+
+		$this->assertQueryTranslation('select `field` from `tbl` where `id` is null', [], function($q)
+		{
+			return $q->table('tbl')->select('field')->where('id','is',$q->value('null'));
+		});
+	}
+
+	/**
+	 * mysql grammar tests
+	 */
+	public function testMultiTableFrom()
+	{
+		$this->assertQueryTranslation('select `t1`.`col`, `t2`.`col` from `t1` as `table_1`,`t2` as `table_2`', [], function($q)
+		{
+			return $q->table(['t1' => 'table_1', 't2' => 'table_2'])->select('t1.col,t2.col');
+		});
+	}
+
+	/**
+	 * mysql grammar tests
+	 */
+	public function testField()
+	{
+		$this->assertQueryTranslation('select `col` from `table` where `col` = `id`', [], function($q)
+		{
+			return $q->table('table')->select('col')->where('col','=',$q->field('id'));
+		});
+	}
+
+	/**
+	 * mysql grammar tests
+	 */
 	public function testInsertSimple()
 	{
 		// simple
@@ -498,6 +556,24 @@ class Translator_Mysql_Test extends TranslatorCase
 		$this->assertQueryTranslation('insert into `test` (`bar`, `foo`) values (?, ?)', array('foo','bar'), function($q) 
 		{
 			return $q->table('test')->insert()->values(array('foo' => 'bar', 'bar' => 'foo'));
+		});
+	}
+
+	/**
+	 * mysql grammar tests
+	 */
+	public function testReplaceSimple()
+	{
+		// simple
+		$this->assertQueryTranslation('replace into `test` (`foo`) values (?)', array('bar'), function($q) 
+		{
+			return $q->table('test')->replace()->values(array('foo' => 'bar'));
+		});
+
+		// some more complexity
+		$this->assertQueryTranslation('replace into `test` (`bar`, `foo`) values (?, ?)', array('foo','bar'), function($q) 
+		{
+			return $q->table('test')->replace()->values(array('foo' => 'bar', 'bar' => 'foo'));
 		});
 	}
 
