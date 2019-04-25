@@ -585,9 +585,12 @@ class Mysql implements TranslatorInterface
 
             // when we have an array as where values we have
             // to parameterize them
-            if (is_array($where[3])) 
-            {
-                $where[3] = '(' . $this->parameterize($where[3]) . ')';
+            if (is_array($where[3])) {
+                if (empty($where[3])) {
+                    $where[3] = "('')";
+                } else {
+                    $where[3] = '(' . $this->parameterize($where[3]) . ')';
+                }
             } else {
                 $where[3] = $this->translateParam($where[3]);
             }
