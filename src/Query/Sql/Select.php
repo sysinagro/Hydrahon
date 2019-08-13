@@ -748,7 +748,7 @@ class Select extends SelectBase implements FetchableInterface
         $existsQuery->setSelect($this);
 
         // run the callbacks to retirve the results
-        $result = $existsQuery->executeResultFetcher()->fetch_all();
+        $result = $existsQuery->executeResultFetcher()->fetch_all(MYSQLI_ASSOC);
 
         if (isset($result[0]['exists']))
         {
