@@ -103,7 +103,7 @@ class SelectBase extends Base
      *     ->where('age', '>', 18)
      *     ->where('name', 'in', array('charles', 'john', 'jeffry'))
      *
-     * @param string            $column The SQL column
+     * @param string|array      $column The SQL column or an array of column => value pairs.
      * @param mixed             $param1 Operator or value depending if $param2 isset.
      * @param mixed             $param2 The value if $param1 is an opartor.
      * @param string            $type the where type ( and, or )
@@ -112,8 +112,7 @@ class SelectBase extends Base
      */
     public function where($column, $param1 = null, $param2 = null, string $type = 'and'): self
     {
-        // if this is the first where element we are going to change
-        // the where type to 'where'
+        // the first where element is not necessary
         if (!empty($this->wheres)) {
             if ($type === 'where') {
                 $type = 'and';
@@ -124,25 +123,55 @@ class SelectBase extends Base
             $wheretype = null;
         }
 
-        // when column is an array we assume to make a bulk and where.
-        if (is_array($column))
+        return $this->appendConditional('where', $column, $param1, $param2, $wheretype);
+    }
+
+    /**
+     * Parse the parameters that make a conditional statement
+     * 
+     * @param string            $statement The type of conditional statement ( where, having )
+     * @param string|array      $column The SQL column or an array of column => value pairs.
+     * @param mixed             $param1
+     * @param mixed             $param2
+     * @param string            $type
+     */
+    protected function appendConditional($statement, $column, $param1 = null, $param2 = null, $type = 'and')
+    {
+        // check if the type is valid
+        if (is_null($type) || !in_array((string)$type, ['and', 'or', 'where', 'having']))
         {
-            $subquery = new SelectBase;
+            throw new Exception('Invalid condition type "'.$type.'", must be one of the following: and, or, where, having');
+        }
+
+        /** @var array $array A reference to the object's property that hold the conditions ($this->wheres, $this->havings) */
+        $array = &$this->{$statement . 's'};
+
+        if (empty($array)) {
+            $type = $statement;
+        } elseif ($type === $statement) {
+            $type = 'and';
+        }
+
+        // when column is an array, add conditions in bulk
+        if (is_array($column)) 
+        {
+            $subquery = new static;
             foreach ($column as $key => $val) 
             {
-                $subquery->where($key, $val, null, $type);
+                $subquery->appendConditional($statement, $key, $val, null, $type);
             }
 
-            $this->wheres[] = [$wheretype, $subquery];
+            $array[] = [$type, $subquery];
             return $this;
         }
 
-        // to make nested wheres possible you can pass an closure
-        // which will create a new query where you can add your nested wheres
-        if (is_object($column) && ($column instanceof \Closure)) {
+        // to make nested wheres/havings possible you can pass an closure
+        // wich will create a new query where you can add your nested wheres/havings
+        if (is_object($column) && ($column instanceof \Closure)) 
+        {
             $subquery = $this->generateSubQuery($column, new SelectBase);
-
-            $this->wheres[] = [$wheretype, $subquery];
+ 
+            $array[] = [$type, $subquery];
             return $this;
         }
 
@@ -159,13 +188,13 @@ class SelectBase extends Base
         // if the param2 is an array we filter it. Im no more sure why
         // but it's there since 4 years so i think i had a reason.
         // edit: Found it out, when param2 is an array we probably 
-        // have an "in" or "between" statement which has no need for dublicates.
+        // have an "in" or "between" statement which has no need for duplicates.
         if (is_array($param2)) 
         {
             $param2 = array_unique($param2);
         }
 
-        $this->wheres[] = [$wheretype, $column, $operator, $param2];
+        $array[] = [$type, $column, $operator, $param2];
         return $this;
     }
 
@@ -222,6 +251,26 @@ class SelectBase extends Base
     }
 
     /**
+     * Creates a where not in statement
+     * 
+     *     ->whereIn('id', [42, 38, 12])
+     * 
+     * @param string                    $column
+     * @param array                     $options
+     * @return self The current query builder.
+     */
+    public function whereNotIn($column, array $options = array())
+    {
+        // when the options are empty we skip
+        if (empty($options))
+        {
+            return $this;
+        }
+
+        return $this->where($column, 'not in', $options);
+    }
+
+    /**
      * Creates a where something is null statement
      * 
      *     ->whereNull('modified_at')
@@ -273,6 +322,7 @@ class SelectBase extends Base
         return $this->orWhere($column, 'is not', new SpecialValue('NULL'));
     }
 
+
     /**
      * Set the query limit
      * 
@@ -312,7 +362,7 @@ class SelectBase extends Base
     }
 
     /**
-     * Create an query limit based on a page and a page size
+     * Create a query limit based on a page and a page size
      *
      * @param int        $page
      * @param int         $size
