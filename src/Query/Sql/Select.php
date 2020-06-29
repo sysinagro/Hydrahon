@@ -11,6 +11,8 @@ namespace ClanCats\Hydrahon\Query\Sql;
 
 use ClanCats\Hydrahon\Query\Expression;
 
+use ClanCats\Hydrahon\BaseQuery;
+
 class Select extends SelectBase implements FetchableInterface
 {
     /**
@@ -42,6 +44,13 @@ class Select extends SelectBase implements FetchableInterface
     protected $groups = array();
 
     /**
+     * The query having statements
+     * 
+     * @var array
+     */
+    protected $havings = array();
+
+    /**
      * join container
      *
      * @var array
@@ -61,6 +70,38 @@ class Select extends SelectBase implements FetchableInterface
      * @var false|string
      */
     protected $forwardKey = false;
+
+    /**
+     * Inherit property values from parent query
+     * 
+     * @param BaseQuery             $parent
+     * @return void
+     */
+    protected function inheritFromParent(BaseQuery $parent)
+    {
+        parent::inheritFromParent($parent);
+
+        if ($parent instanceof Select) {
+            $parent->copyTo($this);
+        } 
+    }
+
+    /**
+     * Copy current queries select attributes to the given one 
+     *
+     * @param Select            $query
+     */
+    public function copyTo(Select $query)
+    {
+        $query->fields = $this->fields;
+        $query->distinct = $this->distinct;
+        $query->orders = $this->orders;
+        $query->groups = $this->groups;
+        $query->havings = $this->havings;
+        $query->joins = $this->joins;
+        $query->groupResults = $this->groupResults;
+        $query->forwardKey = $this->forwardKey;
+    }
 
     /**
      * Distinct select setter
@@ -243,12 +284,17 @@ class Select extends SelectBase implements FetchableInterface
         {
             $this->orders[] = array($columns, $direction); return $this;
         }
-
+        
         foreach ($columns as $key => $column) 
         {
             if (is_numeric($key)) 
             {
-                $this->orders[$column] = $direction;
+                if ($column instanceof Expression)
+                {
+                    $this->orders[] = array($column, $direction);
+                } else {
+                    $this->orders[$column] = $direction;
+                }
             } else {
                 $this->orders[$key] = $column;
             }
@@ -279,6 +325,159 @@ class Select extends SelectBase implements FetchableInterface
         }
 
         return $this;
+    }
+
+    /**
+     * Create a having statement
+     *
+     *     ->having('name', 'ladina')
+     *     ->having('age', '>', 18)
+     *     ->having('name', 'in', array('charles', 'john', 'jeffry'))
+     *
+     * @param string|array      $column The SQL column or an array of column => value pairs.
+     * @param mixed             $param1 Operator or value depending if $param2 isset.
+     * @param mixed             $param2 The value if $param1 is an opartor.
+     * @param string            $type the where type ( and, or )
+     *
+     * @return self The current query builder.
+     */
+    public function having($column, $param1 = null, $param2 = null, $type = 'and')
+    {
+        return $this->appendConditional('having', $column, $param1, $param2, $type);
+    }
+
+    /**
+     * Create an or having statement
+     *
+     * This is the same as the normal having just with a fixed type
+     *
+     * @param string        $column            The SQL column
+     * @param mixed        $param1
+     * @param mixed        $param2
+     *
+     * @return self The current query builder.
+     */
+    public function orHaving($column, $param1 = null, $param2 = null)
+    {
+        return $this->having($column, $param1, $param2, 'or');
+    }
+
+    /**
+     * Create an and having statement
+     *
+     * This is the same as the normal having just with a fixed type
+     *
+     * @param string        $column            The SQL column
+     * @param mixed        $param1
+     * @param mixed        $param2
+     *
+     * @return self The current query builder.
+     */
+    public function andHaving($column, $param1 = null, $param2 = null)
+    {
+        return $this->having($column, $param1, $param2, 'and');
+    }
+
+    /**
+     * Creates a having in statement
+     * 
+     *     ->havingIn('id', [42, 38, 12])
+     * 
+     * @param string                    $column
+     * @param array                     $options
+     * @return self The current query builder.
+     */
+    public function havingIn($column, array $options = array())
+    {
+        // when the options are empty we skip
+        if ( empty( $options ) )
+        {
+            return $this;
+        }
+
+        return $this->having($column, 'in', $options);
+    }
+
+    /**
+     * Creates a having in statement
+     * 
+     *     ->havingIn('id', [42, 38, 12])
+     * 
+     * @param string                    $column
+     * @param array                     $options
+     * @return self The current query builder.
+     */
+    public function havingNotIn($column, array $options = array())
+    {
+        // when the options are empty we skip
+        if ( empty( $options ) )
+        {
+            return $this;
+        }
+
+        return $this->having($column, 'not in', $options);
+    }
+
+    /**
+     * Creates a having something is null statement
+     * 
+     *     ->havingNull('modified_at')
+     * 
+     * @param string                    $column
+     * @return self The current query builder.
+     */
+    public function havingNull($column)
+    {
+        return $this->having($column, 'is', $this->raw('NULL'));
+    }
+
+     /**
+     * Creates a having something is not null statement
+     * 
+     *     ->havingNotNull('created_at')
+     * 
+     * @param string                    $column
+     * @return self The current query builder.
+     */
+    public function havingNotNull($column)
+    {
+        return $this->having($column, 'is not', $this->raw('NULL'));
+    }
+
+    /**
+     * Creates a or having something is null statement
+     * 
+     *     ->orHavingNull('modified_at')
+     * 
+     * @param string                    $column
+     * @return self The current query builder.
+     */
+    public function orHavingNull($column)
+    {
+        return $this->orHaving($column, 'is', $this->raw('NULL'));
+    }
+
+    /**
+     * Creates a or having something is not null statement
+     * 
+     *     ->orHavingNotNull('modified_at')
+     * 
+     * @param string                    $column
+     * @return self The current query builder.
+     */
+    public function orHavingNotNull($column)
+    {
+        return $this->orHaving($column, 'is not', $this->raw('NULL'));
+    }
+
+    /**
+     * Will reset the current selects having conditions
+     * 
+     * @return self The current query builder.
+     */
+    public function resetHavings()
+    {
+        $this->havings = array(); return $this;
     }
 
     /**
@@ -623,7 +822,7 @@ class Select extends SelectBase implements FetchableInterface
     }
 
     /**
-     * Helper for the SQL avarage aggregation.
+     * Helper for the SQL average aggregation.
      *
      * @param string            $field
      * @return int
