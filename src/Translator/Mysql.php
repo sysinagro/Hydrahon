@@ -710,16 +710,7 @@ class Mysql implements TranslatorInterface
                 // first and compile the select if it is one
                 if ($table[key($table)] instanceof Select)
                 {
-                    $translator = new static;
-
-                    // translate the subselect
-                    list($subQuery, $subQueryParameters) = $translator->translate($table[key($table)]);
-
-                    // merge the parameters
-                    foreach($subQueryParameters as $parameter)
-                    {
-                        $this->addParameter($parameter);
-                    }
+                    $subQuery = $this->translateSubQuery($alias);
 
                     $build .= '(' . $subQuery . ') as ' . $this->escape(key($table));
                 }
